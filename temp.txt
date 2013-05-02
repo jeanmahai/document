@@ -1,0 +1,136 @@
+https://developers.google.com/places/documentation/?hl=zh-CN
+
+
+myLocationOverlay = new MyLocationOverlay(this, mapView);
+
+		if (myMask == true) {
+			if (myLocationOverlay.isMyLocationEnabled() == false) {
+				myLocationOverlay.enableMyLocation();
+
+			}
+			// waittingDialog = ProgressDialog.show(this,
+			// getString(R.string.searchProgDialogTitle),
+			// getString(R.string.waittingDialogTitle), true, false);
+			Toast.makeText(this, getString(R.string.waittingDialogTitle),
+					Toast.LENGTH_SHORT).show();
+			myLocationOverlay.runOnFirstFix(new Runnable() {
+				public void run() {
+					myGeoPoint = myLocationOverlay.getMyLocation();
+					if (myGeoPoint != null) {
+						if (mMapController != null) {
+							mMapController.animateTo(myGeoPoint);
+						}
+
+						// if (waittingDialog != null &&
+						// waittingDialog.isShowing() == true) {
+						new Thread() {
+							@Override
+							public void run() {
+								try {
+									onLocationAfter();
+								} catch (Exception ex) {
+									String message = ex.getMessage() != null ? ex
+											.getMessage() : "error";
+									Log.d("error", message);
+								}
+							}
+						}.start();
+						// waittingDialog.dismiss();
+						// }
+						// mapView.invalidate();
+					}
+
+				}
+			});
+			if (CommUtility.hasCdmaNetwork(this) == true
+					&& CommUtility.hasNetworkLocation(this) == false) {
+				List<CellInfo> neighbouring = CommUtility
+						.getBaseStationInfo(this);
+				if (neighbouring.size() > 0) {
+					for (CellInfo item : neighbouring) {
+						if ((item.getNetworkType() == 4
+								|| item.getNetworkType() == 6 || item
+								.getNetworkType() == 7)
+								|| (item.getLatitude() != Double.MIN_VALUE && item
+										.getLongitude() != Double.MIN_VALUE)) {
+							myGeoPoint = new GeoPoint(
+									(int) (item.getLatitude() * 1E6),
+									(int) (item.getLongitude() * 1E6));
+							if (myGeoPoint != null) {
+								mMapController.animateTo(myGeoPoint);
+								// if (waittingDialog != null&&
+								// waittingDialog.isShowing() == true) {
+
+								new Thread() {
+									@Override
+									public void run() {
+										try {
+											onLocationAfter();
+										} catch (Exception ex) {
+											String message = ex.getMessage() != null ? ex
+													.getMessage() : "error";
+											Log.d("error", message);
+										}
+									}
+								}.start();
+								// waittingDialog.dismiss();
+								// }
+								// mapView.invalidate();
+							}
+							break;
+						}
+					}
+				}
+			}
+
+		} else {
+			myLocationOverlay.disableMyLocation();
+		}
+
+		if (CommUtility.getIsemulator(this) == false) {
+			mapView.getOverlays().add(myLocationOverlay);
+		}
+		if (myLocationOverlay.getMyLocation() == null) {
+			if (CommUtility.isNetworkAvailable(this) == true) {
+				List<CellInfo> temp = CommUtility.getBaseStationInfo(this);
+				CellInfo cell = null;
+				CellInfo newCell = null;
+				List<CellInfo> positionList = new ArrayList<CellInfo>();
+				if (temp != null && temp.size() > 0) {
+					cell = temp.get(0);
+					newCell = MapUtility.ReadResponse(cell);
+					if (newCell != null) {
+						lat = newCell.getLatitude();
+						lng = newCell.getLongitude();
+						positionList.add(newCell);
+					}
+					if (temp.size() >= 3) {
+						for (int i = 1; i < 3; i++) {
+							cell = temp.get(i);
+							newCell = MapUtility.ReadResponse(cell);
+							positionList.add(newCell);
+						}
+						newCell = MapUtility.getPosition(positionList.get(0)
+								.getLatitude(), positionList.get(0)
+								.getLongitude(), positionList.get(1)
+								.getLatitude(), positionList.get(1)
+								.getLongitude(), positionList.get(2)
+								.getLatitude(), positionList.get(2)
+								.getLongitude());
+						if (newCell != null) {
+							lat = newCell.getLatitude();
+							lng = newCell.getLongitude();
+						}
+					}
+					cell = null;
+					newCell = null;
+				}
+				temp.clear();
+				temp = null;
+
+			}
+			myGeoPoint = new GeoPoint((int) (lat * 1E6), (int) (lng * 1E6));
+			if (mMapController != null && myGeoPoint!=null) {
+				mMapController.animateTo(myGeoPoint);
+			}
+		}
